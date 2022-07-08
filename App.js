@@ -1,120 +1,158 @@
-import { StatusBar } from 'expo-status-bar';
-import React from 'react';
-import { StyleSheet, Text, View, TextInput, Dimensions, TouchableOpacity} from 'react-native';
-import Svg, { Path, Defs, LinearGradient, Stop } from "react-native-svg"
-import ButtonGradient from './Button';
-
-const { width, height } = Dimensions.get('window')
+import React, { useState, useEffect, useRef } from 'react';
+import { Text, View, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import Constants from 'expo-constants';
+import { Camera, CameraType } from 'expo-camera';
+import * as MediaLibrary from 'expo-media-library';
+import { MaterialIcons } from '@expo/vector-icons';
+import Button from './src/components/Button';
 
 export default function App() {
+  //* solicita permisos de uso de la camera
+  const [hasCameraPermission, setHasCameraPermission] = useState(null);
+  //* obtiene y setea el valor de la imagen
+  const [image, setImage] = useState(null);
+  //* tipo de camera frontal o trasera
+  const [type, setType] = useState(Camera.Constants.Type.back);
+  //* flash activado o desactivado
+  const [flash, setFlash] = useState(Camera.Constants.FlashMode.off);
+  //* referencia a la camara.
+  const cameraRef = useRef(null);
 
-  function SvgTop() {
-    return (
-      <Svg
-      width={500}
-      height={324}
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <Path
-        d="M297.871 315.826c73.405 13.896 165.338-13.964 202.129-29.63V230H1.326v63.5c69.15-42.913 204.789 4.957 296.545 22.326z"
-        fill="url(#prefix__paint0_linear_103:6)"
-        fillOpacity={0.5}
-      />
-      <Path
-        d="M237.716 308.627C110.226 338.066 30.987 318.618 0 304.77V0h500v304.77c-43.161-12.266-134.794-25.581-262.284 3.857z"
-        fill="url(#prefix__paint1_linear_103:6)"
-      />
-      <Defs>
-        <LinearGradient
-          id="prefix__paint0_linear_103:6"
-          x1={492.715}
-          y1={231.205}
-          x2={480.057}
-          y2={364.215}
-          gradientUnits="userSpaceOnUse"
-        >
-          <Stop stopColor="#FFB677" />
-          <Stop offset={1} stopColor="#FF3CBD" />
-        </LinearGradient>
-        <LinearGradient
-          id="prefix__paint1_linear_103:6"
-          x1={7.304}
-          y1={4.155}
-          x2={144.016}
-          y2={422.041}
-          gradientUnits="userSpaceOnUse"
-        >
-          <Stop stopColor="#FFB677" />
-          <Stop offset={1} stopColor="#FF3CBD" />
-        </LinearGradient>
-      </Defs>
-    </Svg>
-    )
+  useEffect(() => {
+    //* es una promesa y espera la respuesta obtiene el permiso y lo setea en el permiao
+    //* que inicialmente es nulo
+    (async () => {
+      MediaLibrary.requestPermissionsAsync();
+      const cameraStatus = await Camera.requestCameraPermissionsAsync();
+      setHasCameraPermission(cameraStatus.status === 'granted');
+    })();
+  }, []);
+
+  const takePicture = async () => {
+    if (cameraRef) {
+      try {
+        const data = await cameraRef.current.takePictureAsync();
+        console.log(data);
+        //* data es un objeto y el key de la foto es uri.
+        setImage(data.uri);
+      } catch (error) {
+        console.log(error);
+      }
+    }
+  };
+
+  const savePicture = async () => {
+    if (image) {
+      try {
+        const asset = await MediaLibrary.createAssetAsync(image);
+        alert('Picture saved! 🎉');
+        setImage(null);
+        console.log('saved successfully');
+      } catch (error) {
+        console.log(error);
+      }
+    }
+  };
+
+  if (hasCameraPermission === false) {
+    return <Text>No access to camera</Text>;
   }
+
   return (
-    <View style={styles.mainContainer}>
-      <View style={styles.containerSVG}>
-        <SvgTop/>
-      </View>
-      <View style={styles.container}>
-        <Text style={styles.titulo}>Hello!</Text>
-        <Text style={styles.subTitle}>Sign In to your account</Text>
-        <TextInput 
-          placeholder="jhon@email.com"
-          style={styles.textInput}
-        />
-        <TextInput 
-          placeholder="password"
-          style={styles.textInput}
-          //* parametro para que sea de contraseña  
-          secureTextEntry={true}
-        />
-        <Text style={styles.forgotPassword}>Forgot your password?</Text>
-        <ButtonGradient/>
-        <Text style={styles.forgotPassword}>Don't have an account?</Text>
-        <StatusBar style="auto" />
+    <View style={styles.container}>
+      {!image ? (
+        <Camera
+          style={styles.camera}
+          type={type}
+          ref={cameraRef}
+          flashMode={flash}
+        >
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              paddingHorizontal: 30,
+            }}
+          >
+            <Button
+              title=""
+              icon="retweet"
+              onPress={() => {
+                setType(
+                  type === CameraType.back ? CameraType.front : CameraType.back
+                );
+              }}
+            />
+            <Button
+              onPress={() =>
+                setFlash(
+                  flash === Camera.Constants.FlashMode.off
+                    ? Camera.Constants.FlashMode.on
+                    : Camera.Constants.FlashMode.off
+                )
+              }
+              icon="flash"
+              color={flash === Camera.Constants.FlashMode.off ? 'gray' : '#fff'}
+            />
+          </View>
+        </Camera>
+      ) : (
+        <Image source={{ uri: image }} style={styles.camera} />
+      )}
+
+      <View style={styles.controls}>
+        {image ? (
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              paddingHorizontal: 50,
+            }}
+          >
+            <Button
+              title="Re-take"
+              onPress={() => setImage(null)}
+              icon="retweet"
+            />
+            <Button title="Save" onPress={savePicture} icon="check" />
+          </View>
+        ) : (
+          <Button title="Take a picture " onPress={takePicture} icon="camera" />
+        )}
       </View>
     </View>
-      
   );
 }
 
 const styles = StyleSheet.create({
-  mainContainer: {
-    backgroundColor: '#f1f1f1',
-    flex: 1,
-  },
   container: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingTop: Constants.statusBarHeight,
+    backgroundColor: '#000',
+    padding: 8,
+  },
+  controls: {
+    flex: 0.5,
+  },
+  button: {
+    height: 40,
+    borderRadius: 6,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  containerSVG: {
-    width: width,
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-  },
-  titulo: {
-    fontSize: 80,
-    color: '#34434D',
+  text: {
     fontWeight: 'bold',
+    fontSize: 16,
+    color: '#E9730F',
+    marginLeft: 10,
   },
-  subTitle: {
-    fontSize: 20,
-    color: 'gray',
+  camera: {
+    flex: 5,
+    borderRadius: 20,
   },
-  textInput: {
-    padding: 10,
-    paddingStart: 30,
-    width: '80%',
-    height: 50,
-    marginTop: 20,
-    borderRadius: 30,
-    backgroundColor: '#fff',
-  },
-  forgotPassword: {
-    fontSize: 14,
-    color: 'gray',
-    marginTop: 20
+  topControls: {
+    flex: 1,
   },
 });
