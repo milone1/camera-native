@@ -58,7 +58,7 @@ export default function App() {
         <SvgTop/>
       </View>
       <View style={styles.container}>
-        <Text style={styles.titulo}>Hello Word</Text>
+        <Text style={styles.titulo}>Hello!</Text>
         <Text style={styles.subTitle}>Sign In to your account</Text>
         <TextInput 
           placeholder="jhon@email.com"
@@ -67,6 +67,7 @@ export default function App() {
         <TextInput 
           placeholder="password"
           style={styles.textInput}
+          //* parametro para que sea de contraseña  
           secureTextEntry={true}
         />
         <Text style={styles.forgotPassword}>Forgot your password?</Text>
